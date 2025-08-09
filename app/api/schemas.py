@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -29,3 +29,22 @@ class MetricsResponse(BaseModel):
     count: int
     avg_rating: float
     rating_distribution: Dict[str, float]
+
+
+class InsightsRequest(BaseModel):
+    app_id: str = Field(..., examples=["com.whatsapp"])
+    count: int = Field(100, ge=1, le=1000)
+    lang: str = Field("en", min_length=2, max_length=5)
+    country: str = Field("us", min_length=2, max_length=2)
+
+
+class InsightItem(BaseModel):
+    issue: str
+    evidence_examples: List[str]
+    suggestion: str
+
+
+class InsightsResponse(BaseModel):
+    sentiment_distribution: Dict[str, int]
+    top_negative_keywords: List[str]
+    actionable_insights: List[InsightItem]
