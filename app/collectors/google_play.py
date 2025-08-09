@@ -1,15 +1,17 @@
 from typing import List, Dict
 from google_play_scraper import reviews, Sort
 
+
 class CollectError(Exception):
     pass
 
+
 def fetch_reviews(
-    app_id: str,
-    count: int = 100,
-    lang: str = "en",
-    country: str = "us",
-    sort: Sort = Sort.NEWEST,
+        app_id: str,
+        count: int = 100,
+        lang: str = "en",
+        country: str = "us",
+        sort: Sort = Sort.NEWEST,
 ) -> List[Dict]:
     """
     Fetch up to `count` reviews for a Google Play app_id.

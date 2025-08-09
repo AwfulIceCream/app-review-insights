@@ -4,6 +4,7 @@ from app.collectors.google_play import fetch_reviews, CollectError
 
 router = APIRouter(prefix="/collect", tags=["collect"])
 
+
 @router.post("", response_model=CollectResponse)
 async def collect_reviews(payload: CollectRequest):
     try:
