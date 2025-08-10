@@ -4,13 +4,18 @@ from typing import List, Dict
 _analyzer = SentimentIntensityAnalyzer()
 
 
-def analyze_sentiment(text: str) -> str:
+def analyze_sentiment(text: str, rating: int | None = None) -> str:
     """
     Returns sentiment category: positive, neutral, or negative
     based on compound VADER score.
     """
-    if not text:
-        return "neutral"
+    if rating is not None:
+        if rating <= 2:
+            return "negative"
+        elif rating == 3:
+            return "neutral"
+        else:
+            return "positive"
     score = _analyzer.polarity_scores(text)["compound"]
     if score >= 0.05:
         return "positive"
