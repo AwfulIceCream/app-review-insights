@@ -33,7 +33,7 @@ A FastAPI-based service that collects app reviews, calculates metrics, performs 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/AwfulIceCream/app-review-insights.git
-cd <your-repo>
+cd app-review-insights
 
 # 2. Create a virtual environment
 python -m venv venv
