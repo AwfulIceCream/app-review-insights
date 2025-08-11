@@ -32,7 +32,7 @@ A FastAPI-based service that collects app reviews, calculates metrics, performs 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<your-username>/<your-repo>.git
+git clone https://github.com/AwfulIceCream/app-review-insights.git
 cd <your-repo>
 
 # 2. Create a virtual environment
