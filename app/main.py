@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+
+from app.api.routes.export import router as export_router
 from app.api.routes.collect import router as collect_router
 from app.api.routes.metrics import router as metrics_router
 from app.api.routes.insights import router as insights_router
@@ -14,3 +16,4 @@ async def health_check():
 app.include_router(collect_router)
 app.include_router(metrics_router)
 app.include_router(insights_router)
+app.include_router(export_router)
