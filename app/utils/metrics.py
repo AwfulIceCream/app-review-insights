@@ -21,6 +21,25 @@ def extract_fields(raw_reviews: List[dict]) -> List[dict]:
     return rows
 
 
+def extract_basic_metrics(review: dict) -> dict:
+    """
+    Extracts simple review metrics:
+      - word_count
+      - char_count
+      - has_reply
+      - thumbs_up_count
+    """
+    text = (review.get("content") or "").strip()
+    reply_content = review.get("replyContent")
+
+    return {
+        "word_count": len(text.split()) if text else 0,
+        "char_count": len(text),
+        "has_reply": bool(reply_content and reply_content.strip()),
+        "thumbs_up_count": review.get("thumbsUpCount", 0) or 0
+    }
+
+
 def average_rating(scores: List[int]) -> float:
     if not scores:
         return 0.0
