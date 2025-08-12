@@ -16,15 +16,12 @@ _sentiment_model = pipeline(
 )
 
 
-def is_negative_review(text: str, rating: int | None = None) -> bool:
+def get_sentiment(text: str) -> str:
     """
-    Decide if a review is negative using ML model.
+    Classify sentiment as positive / neutral / negative using the ML model.
     """
-    # ML fallback
     result = _sentiment_model(text[:512])[0]
-    if result["label"] == "negative" and rating > 2:
-        print(rating, result["label"], text)
-    return "negative" in result["label"].lower()
+    return result["label"].lower()
 
 
 def _brand_stopwords(app_id: str) -> set[str]:
@@ -36,9 +33,10 @@ def _brand_stopwords(app_id: str) -> set[str]:
 @router.post("", response_model=InsightsResponse)
 async def generate_insights(payload: InsightsRequest):
     """
-    Minimal version:
-      1. Use ML model (or rating) to keep only negative reviews.
-      2. Extract most common keywords/phrases in those reviews.
+    Generate insights from app reviews:
+      1. Classify each review as positive, neutral, or negative (ML model).
+      2. Extract most common keywords/phrases from negative reviews only.
+      3. Return sentiment distribution + actionable insights.
     """
     try:
         raw = fetch_reviews(
@@ -50,10 +48,9 @@ async def generate_insights(payload: InsightsRequest):
     except CollectError as ce:
         raise HTTPException(status_code=400, detail=str(ce))
 
-    # Clean and normalize
+    # Extract and clean
     rows = extract_fields(raw)
     rows = [r for r in rows if r.get("text") and r["text"].strip()]
-
     if not rows:
         return InsightsResponse(
             sentiment_distribution={"positive": 0, "neutral": 0, "negative": 0},
@@ -61,32 +58,42 @@ async def generate_insights(payload: InsightsRequest):
             actionable_insights=[]
         )
 
-    # Keep only negative reviews
-    negative_texts: List[str] = [
-        r["text"].strip()
-        for r in rows
-        if is_negative_review(r["text"], r.get("rating"))
-    ]
+    # Classify all reviews
+    sentiment_distribution = {"positive": 0, "neutral": 0, "negative": 0}
+    negative_texts: List[str] = []
+    all_texts: List[str] = []
 
+    for r in rows:
+        text = r["text"].strip()
+        label = get_sentiment(text)
+        sentiment_distribution[label] += 1
+        all_texts.append(text)
+        if label == "negative":
+            negative_texts.append(text)
+
+    # No negative reviews → no insights
     if not negative_texts:
         return InsightsResponse(
-            sentiment_distribution={"positive": 0, "neutral": 0, "negative": 0},
+            sentiment_distribution=sentiment_distribution,
             top_negative_keywords=[],
             actionable_insights=[]
         )
 
-    # Extract top keywords from negatives
+    # Extract keywords from negatives
     picked = extract_keywords_contrastive(
         negatives=negative_texts,
-        all_texts=[r["text"] for r in rows],
+        all_texts=all_texts,
         top_n=7,
         app_id=payload.app_id,
         ngram_range=(1, 3),
         max_doc_ratio=0.6,
         return_evidence=True
     )
+
+    # Merge near-duplicate terms
     picked = merge_near_duplicate_terms(picked, threshold=0.5)
 
+    # Build actionable insights
     actionable_insights = [
         {
             "issue": term,
@@ -97,9 +104,7 @@ async def generate_insights(payload: InsightsRequest):
     ]
 
     return InsightsResponse(
-        sentiment_distribution={
-            "negative_count": len(negative_texts)
-        },
+        sentiment_distribution=sentiment_distribution,
         top_negative_keywords=[term for term, _ in picked],
         actionable_insights=actionable_insights
     )
