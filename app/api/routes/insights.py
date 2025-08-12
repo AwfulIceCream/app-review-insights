@@ -5,7 +5,7 @@ from transformers import pipeline
 from app.api.schemas import InsightsRequest, InsightsResponse
 from app.collectors.google_play import fetch_reviews, CollectError
 from app.utils.metrics import extract_fields
-from app.nlp.keywords import extract_keywords
+from app.nlp.keywords import extract_keywords_contrastive
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -76,22 +76,31 @@ async def generate_insights(payload: InsightsRequest):
         )
 
     # Extract top keywords from negatives
-    top_neg_keywords = extract_keywords(
-        texts=negative_texts,
-        top_n=7
+    picked = extract_keywords_contrastive(
+        negatives=negative_texts,
+        all_texts=[r["text"] for r in rows],
+        top_n=7,
+        app_id=payload.app_id,
+        ngram_range=(1, 3),
+        max_doc_ratio=0.6,
+        return_evidence=True
     )
 
     actionable_insights = [
         {
-            "issue": kw,
-            "evidence_examples": [t for t in negative_texts if kw.lower() in t.lower()][:2],
-            "suggestion": f"Investigate and address '{kw}' issues reported by users."
+            "issue": term,
+            "evidence_examples": [negative_texts[i] for i in idxs[:2]],
+            "suggestion": f"Investigate and address '{term}' issues reported by users."
         }
-        for kw in top_neg_keywords
+        for term, idxs in picked
     ]
 
     return InsightsResponse(
-        sentiment_distribution={"positive": 0, "neutral": 0, "negative": len(negative_texts)},
-        top_negative_keywords=top_neg_keywords,
+        sentiment_distribution={
+            "positive": 0,
+            "neutral": 0,
+            "negative": len(negative_texts)
+        },
+        top_negative_keywords=[term for term, _ in picked],
         actionable_insights=actionable_insights
     )
