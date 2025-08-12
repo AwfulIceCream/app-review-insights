@@ -1,3 +1,5 @@
+import torch
+
 from fastapi import APIRouter, HTTPException
 from typing import List
 from transformers import pipeline
@@ -10,9 +12,11 @@ from app.nlp.keywords import extract_keywords_contrastive, merge_near_duplicate_
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 # Load ML sentiment model once
+device = 0 if torch.backends.mps.is_available() else -1
 _sentiment_model = pipeline(
     "sentiment-analysis",
-    model="cardiffnlp/twitter-roberta-base-sentiment-latest"
+    model="cardiffnlp/twitter-roberta-base-sentiment-latest",
+    device=device,
 )
 
 
