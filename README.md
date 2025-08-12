@@ -95,7 +95,7 @@ Visit http://127.0.0.1:8000/docs for interactive API documentation.
 #### Response:
 ```json 
 {
-  "sentiment_distribution": {"positive": 20, "neutral": 15, "negative": 65},
+  "sentiment_distribution": {"negative_count": 65},
   "top_negative_keywords": ["charge", "cancel subscription", "free trial"],
   "actionable_insights": [
     {
@@ -131,14 +131,34 @@ Visit http://127.0.0.1:8000/docs for interactive API documentation.
 
 ---
 
-## Sample Report
+## Sample Insights Report (Example Output)
 
-### Example for com.whatsapp:
-	•	Negative Keywords: ["issue", "photos", "deleted", "status", "today"]
-    Key Insights:
-	•	Users report deleted photos after updates.
-	•	Status uploads failing frequently.
-	•	Time-sensitive complaints on specific days.
+### Sentiment Distribution
+Negative count: 58
+
+### Top Negative Keywords:
+1. trying cancel subscription
+2. charged free trial
+3. stop charges
+4. card stop
+5. figure cancel
+
+### Example Actionable Insights:
+
+| Issue | Evidence Examples | Suggested Action |
+|-------|-------------------|------------------|
+| trying cancel subscription | “charged $49 without my consent… can’t cancel”<br>“subscription is a scam… impossible to cancel” | Add one-tap in-app cancellation & clear billing info |
+| charged free trial | “charged $9.99 for the free trial”<br>“won’t let me cancel the 7 day free trial” | Ensure no charges during trial, add countdown banner |
+| stop charges | “blocked my card to stop the charges”<br>“charging $49/week… only way to stop is new card” | Improve cancellation UX, verify billing logic |
+
+### Themes Identified:
+1. Billing & Trials — Unexpected charges, difficulty canceling, blocked cards.
+2.	UX Clarity — Users struggle to find/manage subscription settings.
+
+### Suggested Improvements:
+	•	In-app subscription management screen (plan, price, next charge).
+	•	Trial countdown + clear pricing before sign-up.
+	•	Low-friction cancellation flow linked to store subscriptions.
 
 ---
 

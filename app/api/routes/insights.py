@@ -98,9 +98,7 @@ async def generate_insights(payload: InsightsRequest):
 
     return InsightsResponse(
         sentiment_distribution={
-            "positive": 0,
-            "neutral": 0,
-            "negative": len(negative_texts)
+            "negative_count": len(negative_texts)
         },
         top_negative_keywords=[term for term, _ in picked],
         actionable_insights=actionable_insights
