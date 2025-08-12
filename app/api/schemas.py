@@ -28,7 +28,7 @@ class MetricsResponse(BaseModel):
     app_id: str
     count: int
     avg_rating: Optional[float]
-    rating_distribution: Dict[int, int]
+    rating_distribution: Dict[float, float]
     avg_word_count: float
     avg_char_count: float
     pct_with_reply: float  # 0..100

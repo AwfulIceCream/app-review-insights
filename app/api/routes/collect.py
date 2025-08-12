@@ -14,7 +14,6 @@ async def collect_reviews(payload: CollectRequest):
             lang=payload.lang,
             country=payload.country,
         )
-        # Optional: sample/shuffle here if you want "random"
         return CollectResponse(app_id=payload.app_id, count=len(data), reviews=data)
     except CollectError as ce:
         raise HTTPException(status_code=400, detail=str(ce))
