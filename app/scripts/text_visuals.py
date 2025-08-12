@@ -12,7 +12,13 @@ from app.nlp.keywords import extract_keywords_contrastive
 from app.api.routes.insights import get_sentiment
 
 # ----------------------------
-# spaCy stopwords (with safe fallback)
+# Configuration
+# ----------------------------
+PLOTS_DIR = "plots"
+os.makedirs(PLOTS_DIR, exist_ok=True)
+
+# ----------------------------
+# Stopwords (spaCy preferred, regex fallback)
 # ----------------------------
 _SPACY_AVAILABLE = False
 _STOPWORDS = set()
@@ -21,19 +27,15 @@ try:
     import spacy
 
     try:
-        # Full small English model
         _nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
-        _SPACY_AVAILABLE = True
         _STOPWORDS = set(_nlp.Defaults.stop_words)
     except OSError:
-        # Fallback to a blank English pipeline (no vocab/model weights, but has stopwords list)
         _nlp = spacy.blank("en")
-        _SPACY_AVAILABLE = True
         _STOPWORDS = set(_nlp.Defaults.stop_words)
+
+    _SPACY_AVAILABLE = True
 except Exception:
-    _SPACY_AVAILABLE = False
     _STOPWORDS = {
-        # minimal fallback list if spaCy isn't available
         "the", "and", "for", "you", "your", "this", "that", "was", "with", "have", "had", "but", "are",
         "not", "get", "got", "can", "cant", "cannot", "its", "they", "them", "too", "very", "has", "been",
         "from", "all", "our", "out", "just", "after", "into", "any", "when", "where", "how", "why", "who",
@@ -42,43 +44,35 @@ except Exception:
     }
 
 # ----------------------------
-# Plots output directory
-# ----------------------------
-PLOTS_DIR = "plots"
-os.makedirs(PLOTS_DIR, exist_ok=True)
-
-# ----------------------------
-# Tokenization + n-grams
+# Tokenization
 # ----------------------------
 _WORD_RE = re.compile(r"[a-z]{3,}")
 
 
 def _tokens_regex(text: str) -> List[str]:
-    """Regex tokenizer (no stopword removal)."""
+    """Tokenize text using regex only."""
     return _WORD_RE.findall(text.lower())
 
 
 def _tokens_spacy(text: str, remove_stopwords: bool, lemmatize: bool) -> List[str]:
-    """
-    spaCy-based tokenizer with optional stopword removal and lemmatization.
-    Requires _SPACY_AVAILABLE. If not, falls back to regex.
-    """
+    """Tokenize with spaCy, optional stopword removal and lemmatization."""
     if not _SPACY_AVAILABLE:
-        toks = _WORD_RE.findall(text.lower())
+        toks = _tokens_regex(text)
         return [t for t in toks if (t not in _STOPWORDS) or (not remove_stopwords)]
+
     doc = _nlp(text.lower())
     out = []
-    for t in doc:
-        if not t.is_alpha or len(t.text) < 3:
+    for token in doc:
+        if not token.is_alpha or len(token.text) < 3:
             continue
-        if remove_stopwords and t.is_stop:
+        if remove_stopwords and token.is_stop:
             continue
-        out.append(t.lemma_ if lemmatize else t.text)
+        out.append(token.lemma_ if lemmatize else token.text)
     return out
 
 
 def _tokenize(text: str, remove_stopwords: bool = False, lemmatize: bool = True) -> List[str]:
-    """Unified tokenizer: use spaCy if available, else regex + manual stopwords."""
+    """Unified tokenizer: spaCy if available, otherwise regex."""
     if _SPACY_AVAILABLE:
         return _tokens_spacy(text, remove_stopwords=remove_stopwords, lemmatize=lemmatize)
     toks = _tokens_regex(text)
@@ -86,13 +80,11 @@ def _tokenize(text: str, remove_stopwords: bool = False, lemmatize: bool = True)
 
 
 def _ngrams(words: List[str], n: int) -> Iterable[str]:
+    """Generate n-grams from token list."""
     if n == 1:
         yield from words
         return
-    # sliding window
-    iters = [iter(words)]
-    for _ in range(n - 1):
-        iters.append(iter(words))
+    iters = [iter(words) for _ in range(n)]
     for i in range(1, n):
         next(iters[i], None)
     for tup in zip(*iters):
@@ -100,7 +92,7 @@ def _ngrams(words: List[str], n: int) -> Iterable[str]:
 
 
 # ----------------------------
-# Term counting + plotting
+# Analysis helpers
 # ----------------------------
 def top_terms(
         texts: List[str],
@@ -109,18 +101,18 @@ def top_terms(
         remove_stopwords: bool = False,
         lemmatize: bool = True
 ) -> List[Tuple[str, int]]:
-    """Counts n-grams and returns top_k (term, count)."""
-    c = Counter()
+    """Return top-k n-grams across given texts."""
+    counts = Counter()
     for t in texts:
-        w = _tokenize(t, remove_stopwords=remove_stopwords, lemmatize=lemmatize)
+        tokens = _tokenize(t, remove_stopwords=remove_stopwords, lemmatize=lemmatize)
         for n in range(ngram_range[0], ngram_range[1] + 1):
-            c.update(_ngrams(w, n))
-    # guard for very short artifacts
-    filtered = Counter({k: v for k, v in c.items() if len(k) >= 3})
+            counts.update(_ngrams(tokens, n))
+    filtered = Counter({k: v for k, v in counts.items() if len(k) >= 3})
     return filtered.most_common(top_k)
 
 
 def _plot_barh(pairs: List[Tuple[str, int]], title: str, filename: str):
+    """Save horizontal bar plot of term counts."""
     if not pairs:
         print(f"No data for {title}")
         return
@@ -136,6 +128,9 @@ def _plot_barh(pairs: List[Tuple[str, int]], title: str, filename: str):
     print(f"Saved {path}")
 
 
+# ----------------------------
+# Plotters
+# ----------------------------
 def plot_top_ngrams_in_negatives(
         rows,
         ngram_range=(1, 2),
@@ -144,22 +139,19 @@ def plot_top_ngrams_in_negatives(
         remove_stopwords=False,
         lemmatize=True
 ):
+    """Plot top n-grams in negative reviews only."""
     neg_texts = [
         (r.get("text") or "").strip()
         for r in rows
         if r.get("text") and isinstance(r.get("rating"), int) and get_sentiment(r["text"]) == "negative"
     ]
-    pairs = top_terms(
-        neg_texts,
-        ngram_range=ngram_range,
-        top_k=top_k,
-        remove_stopwords=remove_stopwords,
-        lemmatize=lemmatize,
-    )
-    tag = []
-    if remove_stopwords: tag.append("no stopwords")
-    if lemmatize: tag.append("lemmas")
-    suffix = f" ({', '.join(tag)})" if tag else ""
+    pairs = top_terms(neg_texts, ngram_range, top_k, remove_stopwords, lemmatize)
+    suffix_parts = []
+    if remove_stopwords:
+        suffix_parts.append("no stopwords")
+    if lemmatize:
+        suffix_parts.append("lemmas")
+    suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
     _plot_barh(pairs, f"Top n-grams in negative reviews (n={len(neg_texts)}){suffix}", filename)
 
 
@@ -171,43 +163,38 @@ def plot_top_terms_per_sentiment(
         remove_stopwords=False,
         lemmatize=True
 ):
+    """Plot top terms per sentiment category."""
     buckets = {"negative": [], "neutral": [], "positive": []}
     for r in rows:
-        t = (r.get("text") or "").strip()
-        if not t:
+        text = (r.get("text") or "").strip()
+        if not text:
             continue
-        label = get_sentiment(t)
+        label = get_sentiment(text)
         if label not in buckets:
             label = "neutral"
-        buckets[label].append(t)
+        buckets[label].append(text)
 
-    left, right = ngram
-    tops = {}
-    for k, texts in buckets.items():
-        pairs = top_terms(
-            texts,
-            ngram_range=(left, right),
-            top_k=top_k,
-            remove_stopwords=remove_stopwords,
-            lemmatize=lemmatize,
-        )
-        tops[k] = pairs
+    tops = {k: top_terms(texts, (ngram[0], ngram[1]), top_k, remove_stopwords, lemmatize)
+            for k, texts in buckets.items()}
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    classes = ["negative", "neutral", "positive"]
-    for ax, c in zip(axes, classes):
-        pairs = tops.get(c, [])
+    for ax, sentiment in zip(axes, ["negative", "neutral", "positive"]):
+        pairs = tops.get(sentiment, [])
         terms = [p[0] for p in pairs][::-1]
         freqs = [p[1] for p in pairs][::-1]
         ax.barh(terms, freqs)
-        ax.set_title(c.capitalize())
+        ax.set_title(sentiment.capitalize())
         ax.set_xlabel("Count")
-    tag = []
-    if remove_stopwords: tag.append("no stopwords")
-    if lemmatize: tag.append("lemmas")
-    suffix = f" ({', '.join(tag)})" if tag else ""
+
+    suffix_parts = []
+    if remove_stopwords:
+        suffix_parts.append("no stopwords")
+    if lemmatize:
+        suffix_parts.append("lemmas")
+    suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
     fig.suptitle(f"Top terms per sentiment (n-gram {ngram[0]}–{ngram[1]}){suffix}")
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
     path = os.path.join(PLOTS_DIR, filename)
     fig.savefig(path, dpi=180)
     print(f"Saved {path}")
@@ -217,6 +204,7 @@ def plot_keyword_coverage_bar(
         picked_terms_with_idxs: List[Tuple[str, List[int]]],
         filename="keyword_coverage.png"
 ):
+    """Plot keyword coverage based on extracted evidence."""
     if not picked_terms_with_idxs:
         print("No keyword evidence to plot.")
         return
@@ -233,6 +221,7 @@ def plot_keyword_coverage_bar(
 
 
 def main():
+    """Run full analysis pipeline and save plots."""
     app_id = "com.myplantin.app"
     count = 200
     lang = "en"
@@ -253,43 +242,12 @@ def main():
     texts_all = [r["text"].strip() for r in rows]
     texts_neg = [t for t in texts_all if get_sentiment(t) == "negative"]
 
-    # 1) Top n-grams in negatives
-    plot_top_ngrams_in_negatives(
-        rows,
-        ngram_range=(1, 2),
-        top_k=20,
-        filename="neg_ngrams.png",
-        remove_stopwords=False,
-        lemmatize=False,
-    )
-    plot_top_ngrams_in_negatives(
-        rows,
-        ngram_range=(1, 2),
-        top_k=20,
-        filename="neg_ngrams_nostop_lemmas.png",
-        remove_stopwords=True,
-        lemmatize=True,
-    )
+    plot_top_ngrams_in_negatives(rows, (1, 2), 20, "neg_ngrams.png", False, False)
+    plot_top_ngrams_in_negatives(rows, (1, 2), 20, "neg_ngrams_nostop_lemmas.png", True, True)
 
-    # 2) Per-sentiment top terms
-    plot_top_terms_per_sentiment(
-        rows,
-        ngram=(1, 1),
-        top_k=12,
-        filename="terms_per_sentiment.png",
-        remove_stopwords=False,
-        lemmatize=False,
-    )
-    plot_top_terms_per_sentiment(
-        rows,
-        ngram=(1, 1),
-        top_k=12,
-        filename="terms_per_sentiment_nostop_lemmas.png",
-        remove_stopwords=True,
-        lemmatize=True,
-    )
+    plot_top_terms_per_sentiment(rows, (1, 1), 12, "terms_per_sentiment.png", False, False)
+    plot_top_terms_per_sentiment(rows, (1, 1), 12, "terms_per_sentiment_nostop_lemmas.png", True, True)
 
-    # 3) Keyword coverage using your contrastive extractor (with evidence)
     picked = extract_keywords_contrastive(
         negatives=texts_neg,
         all_texts=texts_all,
@@ -300,15 +258,12 @@ def main():
         max_doc_ratio=0.6,
         return_evidence=True,
     )
-    plot_keyword_coverage_bar(
-        picked_terms_with_idxs=picked,
-        filename="keyword_coverage.png",
-    )
+    plot_keyword_coverage_bar(picked, "keyword_coverage.png")
 
-    print("Saved plots to:", os.path.abspath(PLOTS_DIR))
+    print(f"Saved plots to: {os.path.abspath(PLOTS_DIR)}")
     if not _SPACY_AVAILABLE:
         print(
-            "Note: spaCy model not found. For best results, install it:\n"
+            "Note: spaCy model not found. For best results:\n"
             "  pip install spacy && python -m spacy download en_core_web_sm",
             file=sys.stderr,
         )
