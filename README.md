@@ -134,7 +134,9 @@ Visit http://127.0.0.1:8000/docs for interactive API documentation.
 ## Sample Insights Report (example output for PlantIn)
 
 ### Sentiment Distribution
-Negative count: 58
+    positive: 21,
+    neutral: 21,
+    negative: 58
 
 ### Top Negative Keywords:
 1. trying cancel subscription
