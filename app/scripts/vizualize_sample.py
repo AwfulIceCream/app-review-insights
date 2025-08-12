@@ -1,9 +1,9 @@
+import os
 import sys
 from collections import Counter
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 
 from app.collectors.google_play import fetch_reviews, CollectError
 from app.utils.metrics import extract_fields
@@ -11,24 +11,7 @@ from app.utils.metrics import extract_fields
 # ----------------------------
 # Sentiment model (reuse route helper if available; fallback to local pipeline)
 # ----------------------------
-try:
-    # Expected to return "positive" | "neutral" | "negative"
-    from app.api.routes.insights import get_sentiment  # type: ignore
-except Exception:
-    from transformers import pipeline
-
-    device = 0 if torch.backends.mps.is_available() else -1  # MPS if available, else CPU
-    _sentiment_model = pipeline(
-        "sentiment-analysis",
-        model="cardiffnlp/twitter-roberta-base-sentiment-latest",
-        device=device,
-    )
-
-
-    def get_sentiment(text: str) -> str:
-        return _sentiment_model(text[:512])[0]["label"].lower()
-
-import os
+from app.api.routes.insights import get_sentiment  # type: ignore
 
 PLOTS_DIR = "plots"
 os.makedirs(PLOTS_DIR, exist_ok=True)
@@ -160,7 +143,6 @@ if __name__ == "__main__":
     # Generate and save plots
     plot_sentiment_distribution(dict(sentiment_counts), os.path.join(PLOTS_DIR, "sentiment.png"))
     plot_rating_distribution(rating_counts, os.path.join(PLOTS_DIR, "ratings.png"))
-
     # Grouped bars: stars vs model
     star_cnt, model_cnt = sentiment_counts_both(rows, get_sentiment)
     plot_sentiment_methods_comparison(star_cnt, model_cnt, os.path.join(PLOTS_DIR, "sentiment_methods_percent.png"),
