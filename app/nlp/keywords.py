@@ -2,7 +2,6 @@ import re
 import math
 from collections import Counter
 from typing import List, Iterable, Set, Tuple
-from itertools import tee
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import spacy
 
@@ -190,3 +189,44 @@ def extract_keywords_contrastive(
     if return_evidence:
         return picked
     return [t for t, _ in picked]
+
+
+# -------------------------------
+# Post-processing helpers
+# -------------------------------
+def _token_set(phrase: str) -> set[str]:
+    return set(phrase.lower().split())
+
+
+def _jaccard(a: set[str], b: set[str]) -> float:
+    inter = len(a & b)
+    union = len(a | b) or 1
+    return inter / union
+
+
+def merge_near_duplicate_terms(
+        picked: List[Tuple[str, List[int]]],  # [(term, [neg_doc_idxs])]
+        threshold: float = 0.5
+) -> List[Tuple[str, List[int]]]:
+    """
+    Cluster terms by Jaccard similarity on token sets and merge indices.
+    Keep the first term in each cluster as the representative.
+    """
+    clusters: List[Tuple[str, set[int], set[str]]] = []  # (rep_term, idx_set, token_set)
+    for term, idxs in picked:
+        ts = _token_set(term)
+        placed = False
+        for i, (rep, idx_set, rep_ts) in enumerate(clusters):
+            if _jaccard(ts, rep_ts) >= threshold:
+                idx_set.update(idxs)
+                clusters[i] = (rep, idx_set, rep_ts | ts)
+                placed = True
+                break
+        if not placed:
+            clusters.append((term, set(idxs), ts))
+
+    merged: List[Tuple[str, List[int]]] = []
+    for rep, idx_set, _ in clusters:
+        merged.append((rep, sorted(idx_set)))
+    merged.sort(key=lambda x: len(x[1]), reverse=True)
+    return merged

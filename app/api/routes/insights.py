@@ -5,7 +5,7 @@ from transformers import pipeline
 from app.api.schemas import InsightsRequest, InsightsResponse
 from app.collectors.google_play import fetch_reviews, CollectError
 from app.utils.metrics import extract_fields
-from app.nlp.keywords import extract_keywords_contrastive
+from app.nlp.keywords import extract_keywords_contrastive, merge_near_duplicate_terms
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -85,6 +85,7 @@ async def generate_insights(payload: InsightsRequest):
         max_doc_ratio=0.6,
         return_evidence=True
     )
+    picked = merge_near_duplicate_terms(picked, threshold=0.5)
 
     actionable_insights = [
         {
