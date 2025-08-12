@@ -154,39 +154,74 @@ Visit http://127.0.0.1:8000/docs for interactive API documentation.
 	Scikit-learn — Stopword handling for keyword extraction.
 	Uvicorn — ASGI server.
 
-## Sample Insights Report (example output for PlantIn)
+# Sample Insights Report (example output for PlantIn)
 
-### Sentiment Distribution
+## Metrics
 
-    positive: 21,
-    neutral: 21,
-    negative: 58
+The `/metrics` API was queried for `com.myplantin.app` with 100 U.S. English reviews.
 
-### Top Negative Keywords:
+<img width="1386" height="638" alt="image" src="https://github.com/user-attachments/assets/b3c286e2-2933-4c57-b94e-5f516278bd5c" />
 
-1. trying cancel subscription
-2. charged free trial
-3. stop charges
-4. card stop
-5. figure cancel
+- **Average Rating:** **1.96** — indicating a predominantly negative sentiment.  
+- **Rating Distribution:** 69% of reviews are 1-star, while only 18% are 5-star. Middle ratings (2–4 stars) make up a small fraction.  
+- **Review Length:** Average review contains **19.56 words** and **103.11 characters**, suggesting concise feedback rather than long narratives.  
+- **Engagement:** No reviews had developer replies; no thumbs-up reactions recorded.  
 
-### Example Actionable Insights:
+**Interpretation:** The data points to strong user dissatisfaction, with minimal engagement from the developer to address concerns. The heavy skew toward 1-star reviews warrants urgent product, support, and communication improvements.
 
-| Issue                      | Evidence Examples                                                                                | Suggested Action                                     |
-|----------------------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| trying cancel subscription | “charged $49 without my consent… can’t cancel”<br>“subscription is a scam… impossible to cancel” | Add one-tap in-app cancellation & clear billing info |
-| charged free trial         | “charged $9.99 for the free trial”<br>“won’t let me cancel the 7 day free trial”                 | Ensure no charges during trial, add countdown banner |
-| stop charges               | “blocked my card to stop the charges”<br>“charging $49/week… only way to stop is new card”       | Improve cancellation UX, verify billing logic        |
+## Highlights
 
-### Themes Identified:
+The `/insights` API was queried for `com.myplantin.app` with 100 U.S. English reviews.
 
-1. Billing & Trials — Unexpected charges, difficulty canceling, blocked cards.
-2. UX Clarity — Users struggle to find/manage subscription settings.
+<img width="1385" height="769" alt="image" src="https://github.com/user-attachments/assets/0a08dc39-050f-433b-8bb8-dbf3a1e0204f" />
 
-### Suggested Improvements:
+- **Sentiment Distribution:**  
+  - Positive: **23%**  
+  - Neutral: **19%**  
+  - Negative: **58%** — indicating that the majority of user feedback is unfavorable.
 
-	•	In-app subscription management screen (plan, price, next charge).
-	•	Trial countdown + clear pricing before sign-up.
-	•	Low-friction cancellation flow linked to store subscriptions.
+- **Top Negative Keywords:**  
+  "free trial charged", "got charged", "days later charged", "charged month", "lifetime subscription", "huge rip"
 
----
+- **Example Actionable Insight:**  
+  **Issue:** *Free trial charged*  
+  **Evidence Examples:**  
+  - "i agreed for a free trial but i see they charged my card i ask for a refund immediatly. this app is a spam. a way to ste money. i doesnt work at all witb plants"  
+  - "I signed up for free trial for 7 days...that cost me $9.99, then not even 7 days later I'm being charged $49.99! And no way of cancelling...I sent an email to them, but no answer! Help! It's funny though I cancelled BEFORE the end of trial & you still have charged me $49.99! I'm telling everyone DO NOT do it.. they will screw you! I sent an email BEFORE the end of the trial notifying them of cancellation because it wasn't in my Google subscriptions like they said. But they still charged me!"
+
+  **Suggested Action:** Investigate and address recurring "free trial charged" complaints by reviewing subscription flows, improving transparency, and implementing safeguards to prevent unwanted charges.
+
+## Sentiment Distribution
+- **positive:** 23  
+- **neutral:** 19  
+- **negative:** 58  
+
+## Top Negative Keywords
+1) free trial charged  
+2) got charged  
+3) days later charged  
+4) charged month  
+5) lifetime subscription  
+6) huge rip  
+
+## Example Actionable Insights
+
+| Issue                  | Evidence Examples                                                                                                                                                                                                                                                                                                                                                                                                       | Suggested Action                                                                 |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| free trial charged     | “i agreed for a free trial but i see they charged my card…” • “I signed up for free trial for 7 days… then not even 7 days later I’m being charged $49.99… cancelled before the end but still charged.”                                                                                                                                                                                                               | Stop all billing during trial; add explicit trial countdown and end-date banner. |
+| got charged            | “charged every month after ‘lifetime subscription’” • “attempted to charge multiple times a day… before I could cancel I was already charged.”                                                                                                                                                                                                                                                                        | Rate-limit billing attempts; add clear receipts and instant in-app refund link.  |
+| days later charged     | “3 days later I was charged $49.99” • “not even 7 days later I’m being charged $49.99.”                                                                                                                                                                                                                                                                                                                                | Enforce grace period; show upcoming charge screen with confirm/cancel step.      |
+| charged month          | “canceled within the free trial and they still charged me for the month” • “charged money for a free trial… then charged every month.”                                                                                                                                                                                                                                                                                 | Sync cancellation state with store; add server-side checks before renewal.       |
+| lifetime subscription  | “paid for a lifetime subscription… then charged monthly” • “lifetime $45.99 in-app, but still billed $49.99 later; confusing pricing.”                                                                                                                                                                                                                                                                                | Unify pricing between app/website; one source of truth for plan/entitlements.    |
+| huge rip               | “overall, a huge rip off and a giant waste of time” • “charged $50 lifetime I never agreed to… Huge Rip-off.”                                                                                                                                                                                                                                                                                                          | Add pre-purchase consent step; highlight refund policy; tighten A/B copy tests.  |
+
+### Themes Identified
+- **Billing & Trials:** unexpected charges during or after trials; renewals despite cancellation.  
+- **Pricing & Plan Clarity:** lifetime vs monthly confusion; website vs in-app pricing mismatch.  
+- **Cancellation UX:** users can’t find or complete cancellation; repeated charge attempts.
+
+### Suggested Improvements
+- In-app subscription hub: current plan, next charge date, price, manage/cancel in one tap.  
+- Trial safeguards: strict no-charge window, countdown banner, proactive reminders.  
+- Billing robustness: idempotent renewals, store sync on cancel, charge pre-confirmation.  
+- Transparency: consistent pricing across channels; clearer checkout and receipts.
